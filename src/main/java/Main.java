@@ -67,6 +67,7 @@ public class Main {
 
       // время получили в милисекундах,
       // надо пересчитать в часы и минуты.
+      System.out.println("Min time VVO-TLV for each carrier:");
       hashMap.forEach((key, value) -> {
         long hours = value / (1000 * 60 * 60);
         long minutes = (value % (1000 * 60 * 60)) / (1000 * 60);
