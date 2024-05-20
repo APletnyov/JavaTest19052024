@@ -5,6 +5,9 @@ import org.json.simple.parser.JSONParser;
 import java.io.FileReader;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.Collections;
 
 public class Main {
   private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("dd.MM.yy HH:mm");
@@ -24,38 +27,80 @@ public class Main {
       // чтобы рассчитать минимальное время
       JSONArray tickets = (JSONArray) jsonObject.get("tickets");
 
-      long minimalTime = Long.MAX_VALUE;
-      String carrierWithMinimalTime = "";
+      String originName = "";
+      String destinationName = "";
+      String carrier = "";
+      String departureDateTime = "";
+      String arrivalDateTime = "";
+      // создадим массив с ценами для расчета средней и медианы
+      ArrayList<Long> arrPrices = new ArrayList<Long>();
+
+      HashMap<String, Long> hashMap = new HashMap<>();
 
       for (Object ticketObj : tickets) {
+
         JSONObject ticket = (JSONObject) ticketObj;
-        String originName = (String) ticket.get("origin_name");
-        String destinationName = (String) ticket.get("destination_name");
-        String carrier = (String) ticket.get("carrier");
-        String departureDateTime = (String) ticket.get("departure_date") + " " + (String) ticket.get("departure_time");
-        String arrivalDateTime = (String) ticket.get("arrival_date") + " " + (String) ticket.get("arrival_time");
+
+        originName = (String) ticket.get("origin_name");
+        destinationName = (String) ticket.get("destination_name");
+        carrier = (String) ticket.get("carrier");
+        departureDateTime = (String) ticket.get("departure_date") + " " + (String) ticket.get("departure_time");
+        arrivalDateTime = (String) ticket.get("arrival_date") + " " + (String) ticket.get("arrival_time");
 
         if (originName.equals("Владивосток") && destinationName.equals("Тель-Авив")) {
+
+          arrPrices.add((Long)ticket.get("price"));
+          
+          if (!hashMap.containsKey(carrier)) {
+            hashMap.put(carrier, Long.MAX_VALUE);
+          }
 
           Date departureDate = DATE_FORMAT.parse(departureDateTime);
           Date arrivalDate = DATE_FORMAT.parse(arrivalDateTime);
           long timeOfFlight = arrivalDate.getTime() - departureDate.getTime();
 
-          if (timeOfFlight < minimalTime) {
-            minimalTime = timeOfFlight;
-            carrierWithMinimalTime = carrier;
+          if (timeOfFlight < hashMap.get(carrier)) {
+            hashMap.put(carrier, timeOfFlight);
           }
         }
       }
 
       // время получили в милисекундах,
       // надо пересчитать в часы и минуты.
-      long hours = minimalTime / (1000 * 60 * 60);
-      long minutes = (minimalTime % (1000 * 60 * 60)) / (1000 * 60);
+      hashMap.forEach((key, value) -> {
+        long hours = value / (1000 * 60 * 60);
+        long minutes = (value % (1000 * 60 * 60)) / (1000 * 60);
+        System.out.println("Carrier: " + key + ", Time: " + hours + " hrs " + minutes + " min");
+      });
 
-      System.out.println("Minimal time of flight: " + hours + " hrs " + minutes + " min");
-      System.out.println("Carrier: " + carrierWithMinimalTime);
 
+      int size = arrPrices.size();
+      //посчитаем среднее
+      long valueAverage = 0l;
+      if (size != 0)
+      {
+        for (Long price : arrPrices)
+        {
+            valueAverage += price;
+        }
+      }
+      valueAverage = valueAverage / (long) size;
+
+      //посчитаем медиану
+      Collections.sort(arrPrices);
+      
+      Long median = 0l;
+      if (size % 2 == 0) {
+          Long middle1 = arrPrices.get(size / 2 - 1);
+          Long middle2 = arrPrices.get(size / 2);
+          median = (middle1 + middle2) / 2;
+      } else {
+          median = arrPrices.get((size - 1) / 2);
+      }
+      Long difference = valueAverage - median;
+
+      System.out.println("Difference between avg and median prices (VVO-TLV): " + difference);
+   
       reader.close();
 
     } catch (Exception e) {
